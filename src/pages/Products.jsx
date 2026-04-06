@@ -124,8 +124,14 @@ export default function Products() {
       const res = await api.get("/products");
       // API retorna { success, data: [...], pagination }
       const productsData = res.data?.data || res.data || [];
-      setProducts(productsData);
-      localStorage.setItem("products_cache", JSON.stringify(productsData));
+      const normalizedProducts = productsData.map((product) => ({
+        ...product,
+        price: product.sale_price ?? product.price,
+        category: product.category_name ?? product.category,
+        main_image: product.main_image || product.image_url || null,
+      }));
+      setProducts(normalizedProducts);
+      localStorage.setItem("products_cache", JSON.stringify(normalizedProducts));
     } catch (err) {
       const cached = localStorage.getItem("products_cache");
       if (cached) setProducts(JSON.parse(cached));
@@ -152,8 +158,14 @@ export default function Products() {
   const openPreview = async (product) => {
     try {
       const res = await api.get(`/products/${product.id}`);
-      const mainImage = res.data.images?.find((img) => img.is_main)?.url || product.main_image;
-      setCurrent({ ...res.data, main_image: mainImage });
+      const productData = res.data?.data || res.data || {};
+      const mainImage = productData.images?.find((img) => img.is_main)?.url || product.main_image;
+      setCurrent({
+        ...productData,
+        main_image: mainImage,
+        price: productData.sale_price ?? productData.price,
+        category: productData.category_name ?? productData.category,
+      });
       setOpenDetail(true);
     } catch (err) {
       alert("Error al cargar detalles");
