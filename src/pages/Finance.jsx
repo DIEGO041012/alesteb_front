@@ -34,34 +34,40 @@ export default function Finance() {
 
   useEffect(() => {
     loadFinance();
-    api.get("/products").then(res => setProducts(res.data)).catch(err => console.error(err));
+    api.get("/products").then(res => setProducts(res.data?.data || res.data)).catch(err => console.error(err));
   }, []);
 
   const loadFinance = async () => {
     try {
-      const [expRes, sumRes, salesRes] = await Promise.all([
-        api.get("/expenses"),
-        api.get("/expenses/summary"),
+      const [invRes, sumRes, salesRes] = await Promise.all([
+        api.get("/finance/invoices"),
+        api.get("/finance/summary"),
         api.get("/sales")
       ]);
       
-      const salesArr = salesRes.data || [];
-      const expensesArr = expRes.data || [];
+      const salesArr = (salesRes.data?.data || salesRes.data) || [];
+      const invoicesArr = (invRes.data && Array.isArray(invRes.data)) ? invRes.data : [];
       const ventas = salesArr.reduce((sum, s) => sum + Number(s.total || 0), 0);
-      const totalGastos = Number(sumRes.data?.totalGastos || 0);
-      const totalCompras = Number(sumRes.data?.totalCompras || 0);
+      
+      const summary_data = sumRes.data;
+      const totalVentas = Number(summary_data?.revenue?.total || 0);
+      const totalGastos = Number(summary_data?.expenses?.operating || 0);
+      const totalCompras = Number(summary_data?.expenses?.purchases || 0);
+      const rentabilidad = Number(summary_data?.profitability?.net_profit || 0);
 
-      setExpenses(expensesArr);
-      setSummary({ totalVentas: ventas, totalGastos, totalCompras, rentabilidad: ventas - totalGastos });
+      setExpenses(invoicesArr);
+      setSummary({ totalVentas, totalGastos, totalCompras, rentabilidad });
 
+      // Categorizar gastos por tipo de factura (service o purchase)
       const catMap = {};
-      expensesArr.forEach(e => {
-        catMap[e.category] = (catMap[e.category] || 0) + Number(e.amount);
+      invoicesArr.forEach(invoice => {
+        const category = invoice.invoice_type === 'service' ? 'Servicios' : 'Compras';
+        catMap[category] = (catMap[category] || 0) + Number(invoice.total_amount || 0);
       });
       setCategoryData(Object.entries(catMap).map(([name, value]) => ({ name, value })));
 
       setComparisonData([
-        { name: 'Ingresos', monto: ventas, fill: '#10b981' },
+        { name: 'Ingresos', monto: totalVentas, fill: '#10b981' },
         { name: 'Egresos', monto: totalGastos + totalCompras, fill: '#ef4444' }
       ]);
     } catch (error) {
@@ -73,20 +79,32 @@ export default function Finance() {
     e.preventDefault();
     setLoading(true);
     try {
-      const expenseData = {
-        type: form.type,
-        category: form.type === 'compra' ? `Reposición de Inventario` : (form.category || "Gasto"),
-        description: form.description,
-        amount: Number(form.amount),
-        product_id: form.product_id || null,
-        quantity: Number(form.quantity) || 1
+      // Mapear datos del formulario al formato esperado por el backend
+      const invoiceData = {
+        invoice_type: form.type === 'compra' ? 'purchase' : 'service', // 'purchase' o 'service'
+        provider_id: null, // Puede dejarse null para servicios
+        invoice_date: new Date().toISOString().split('T')[0],
+        description: form.description || (form.type === 'compra' ? 'Reposición de Inventario' : form.category),
+        total_amount: Number(form.amount),
+        payment_method: 'cash', // Por defecto cash
+        notes: form.description
       };
 
-      await api.post("/expenses", expenseData);
+      // Si es una compra y hay producto, agregarlo a los items
+      if (form.type === 'compra' && form.product_id) {
+        invoiceData.items = [{
+          product_id: form.product_id,
+          quantity: Number(form.quantity) || 1,
+          unit_price: Number(form.amount) / (Number(form.quantity) || 1) // Calcular precio unitario
+        }];
+      }
+
+      await api.post("/finance/invoices", invoiceData);
       setOpen(false);
       loadFinance();
       setForm(initialForm);
     } catch (error) {
+      console.error("Error al registrar movimiento:", error);
       alert("Error al registrar movimiento");
     } finally {
       setLoading(false);
