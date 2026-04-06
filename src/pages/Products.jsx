@@ -122,8 +122,10 @@ export default function Products() {
   const loadProducts = async () => {
     try {
       const res = await api.get("/products");
-      setProducts(res.data);
-      localStorage.setItem("products_cache", JSON.stringify(res.data));
+      // API retorna { success, data: [...], pagination }
+      const productsData = res.data?.data || res.data || [];
+      setProducts(productsData);
+      localStorage.setItem("products_cache", JSON.stringify(productsData));
     } catch (err) {
       const cached = localStorage.getItem("products_cache");
       if (cached) setProducts(JSON.parse(cached));

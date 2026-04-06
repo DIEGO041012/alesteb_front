@@ -32,7 +32,9 @@ export default function SalesHistory() {
   const loadSales = async () => {
     try {
       const res = await api.get("/sales");
-      const data = res.data.map(s => ({
+      // API retorna array directo
+      const salesArray = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      const data = salesArray.map(s => ({
         ...s,
         total: s.total || s.total_amount || 0
       }));

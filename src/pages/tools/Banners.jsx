@@ -207,8 +207,10 @@ export default function Banners() {
   const loadBanners = async () => {
     try {
         const res = await api.get("/banners");
-        setBanners(res.data);
-        localStorage.setItem("banners_cache", JSON.stringify(res.data));
+        // API retorna array directo
+        const bannersData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setBanners(bannersData);
+        localStorage.setItem("banners_cache", JSON.stringify(bannersData));
     } catch (error) {
         console.warn("Error cargando banners, usando cache local", error);
         const cached = localStorage.getItem("banners_cache");

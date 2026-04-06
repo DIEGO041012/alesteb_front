@@ -35,8 +35,9 @@ export default function Dashboard() {
         api.get("/products"),
       ]);
 
-      const salesData = salesRes?.data || [];
-      const productsData = productsRes?.data || [];
+      // Sales retorna array directo, Products retorna { success, data, pagination }
+      const salesData = Array.isArray(salesRes?.data) ? salesRes.data : salesRes?.data?.data || [];
+      const productsData = Array.isArray(productsRes?.data) ? productsRes.data : productsRes?.data?.data || [];
 
       // Procesamiento de Alertas
       const lowItems = productsData.filter(p => Number(p.stock || 0) <= 5);

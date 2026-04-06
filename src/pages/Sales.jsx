@@ -27,8 +27,9 @@ export default function Sales() {
         api.get("/products"),
         api.get("/users")
       ]);
-      setProducts(prodRes.data);
-      setUsers(userRes.data);
+      // Ambas APIs retornan { success: true, data: [...] }
+      setProducts(prodRes.data?.data || prodRes.data || []);
+      setUsers(userRes.data?.data || userRes.data || []);
     } catch (err) {
       console.error("Error cargando datos", err);
     }

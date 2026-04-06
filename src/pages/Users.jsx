@@ -24,7 +24,8 @@ export default function Users() {
   const fetchUsers = async () => {
     try {
       const res = await api.get("/users");
-      setUsers(res.data);
+      // API retorna { success: true, data: [...] }
+      setUsers(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Error cargando clientes:", err);
     } finally {
